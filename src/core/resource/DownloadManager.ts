@@ -6,7 +6,6 @@ import { cloneDeep } from "lodash-es";
 import { songDownloadUrl, songLyric, songUrl, unlockSongUrl } from "@/api/song";
 import { songLevelData } from "@/utils/meta";
 import { getPlayerInfoObj } from "@/utils/format";
-import { SongUnlockServer } from "./SongManager";
 
 interface DownloadTask {
   song: SongType;
