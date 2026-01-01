@@ -145,7 +145,7 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
               },
               () => "下载管理",
             ),
-          show: statusStore.isDeveloperMode && isElectron && !settingStore.hideDownload,
+          show: isElectron && !settingStore.hideDownload,
           icon: renderIcon("Download"),
         },
         {

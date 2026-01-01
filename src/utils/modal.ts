@@ -207,9 +207,6 @@ export const openDownloadSong = (song: SongType) => {
   if (!isLogin()) return openUserLogin();
   // 是否可下载
   if (!song) return window.$message.warning("请正确选择歌曲");
-  if (song.free !== 0 && dataStore.userData.vipType === 0 && !song?.pc) {
-    return window.$message.warning("账号会员等级不足，请提升权限");
-  }
   const modal = window.$modal.create({
     preset: "card",
     transformOrigin: "center",

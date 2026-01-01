@@ -3,9 +3,10 @@ import { useDataStore, useSettingStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 import { saveAs } from "file-saver";
 import { cloneDeep } from "lodash-es";
-import { songDownloadUrl, songLyric, songUrl } from "@/api/song";
+import { songDownloadUrl, songLyric, songUrl, unlockSongUrl } from "@/api/song";
 import { songLevelData } from "@/utils/meta";
 import { getPlayerInfoObj } from "@/utils/format";
+import { SongUnlockServer } from "./SongManager";
 
 interface DownloadTask {
   song: SongType;
@@ -264,13 +265,45 @@ class DownloadManager {
       if (!url) {
         const result = await songDownloadUrl(song.id, quality);
         if (result.code !== 200 || !result?.data?.url) {
-          return {
-            success: false,
-            message: result.message || "获取下载链接失败",
-          };
+          // 标准下载链接失败，尝试使用音源解锁功能
+          if (isElectron && settingStore.useSongUnlock) {
+            const artist = Array.isArray(song.artists) ? song.artists[0].name : song.artists;
+            const keyWord = song.name + "-" + artist;
+            const servers = settingStore.songUnlockServer.filter((s) => s.enabled).map((s) => s.key);
+            
+            if (servers.length > 0) {
+              // 并发执行，按顺序找成功项
+              const results = await Promise.allSettled(
+                servers.map((server) =>
+                  unlockSongUrl(song.id, keyWord, server).then((unlockResult) => ({
+                    server,
+                    result: unlockResult,
+                    success: unlockResult.code === 200 && !!unlockResult.url,
+                  })),
+                ),
+              );
+
+              for (const r of results) {
+                if (r.status === "fulfilled" && r.value.success) {
+                  url = r.value.result.url;
+                  type = "mp3"; // 解锁的链接默认为 mp3
+                  break;
+                }
+              }
+            }
+          }
+
+          // 如果解锁也没有成功，返回失败
+          if (!url) {
+            return {
+              success: false,
+              message: result.message || "获取下载链接失败",
+            };
+          }
+        } else {
+          url = result.data.url;
+          type = result.data.type?.toLowerCase() || "mp3";
         }
-        url = result.data.url;
-        type = result.data.type?.toLowerCase() || "mp3";
       }
 
       const infoObj = getPlayerInfoObj(song) || {
